@@ -25,6 +25,9 @@ if [ ! -f .env ] ; then
 	echo "_ADSBIM_BASE_VERSION=$(cat /opt/adsb/adsb.im.version)" >> .env
 	echo "_ADSBIM_CONTAINER_VERSION=$(cat /opt/adsb/adsb.im.version)" >> .env
 fi
+if [ ! -f config.json ] ; then
+	bash /opt/adsb/create-json-from-env.sh
+fi
 bash /opt/adsb/docker-pull.sh &
 
 # the code below enables the redirection from the my.adsb.im service to the

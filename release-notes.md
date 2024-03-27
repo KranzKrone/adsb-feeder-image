@@ -1,25 +1,11 @@
-Changes since v1.3.1 include
-- update to latest Ultrafeeder with some readsb fixes
-- second (and hopefully correct) attempt to fix the blocklist issue on DietPi (and fix a couple related bugs)
-- make it easier to clear out the extra enviroment variable setting
-- ensure that the system survives the scenario where the user deletes their settings and then wants to restore them from a backup; recover version info for both adsb-setup and the containers
-- don't restore the container versions from the backup
-- fix install issue that prevented SDRplay devices from working out of the box
-- prevent users from inadvertantly locking themselves out of a freshly installed system by restoring from a system with secure-image enabled
-- fix issue with recent iob builds potentially not successfully completing that first install due to CONFIG_NTP_MODE being set to 0
-- attempt to deal better with SDRs without serial number
-- intial experimental support of SDRplay devices
-- backup: generate zipfile on the fly; this gets us immediate UI response to clicking the backup button and less wear and tear on the SD card
-- more backup/restore fixes
-- update to the latest version of the udev rules and module blocklist from Ramon Kolb's docker-install.sh; add the same code to the DietPi builds (where it was missing before)
-- switch to chrony for time synchronization on all images
-- enable backup/restore with the config.json setup - this has received some testing, could benefit from more scrutiny 
-- upgrade Airspy container
-- improve the shutdown behavior of the containers to shorten the restart time after config changes
+Changes since v1.3 include
+- introduction of a full stage 2 mode that allows separating data collection (the antenna / SDR) and data distribution (feeding the aggregators) between different systems, with one stage 2 instances collecting and sharing data from multiple (micro) feeders
+- significant changes to the web UI to support integrated instances (how things used to be), micro feeders, and stage 2 instances
+- (under the hood) significant changes to the storage format for config settings; it should be transparent during an upgrade, but once upgraded, a downgrade is not possible
 
 > [!NOTE]
 > Based on the available usage information, I have significantly reduced the number of images provided here. If there's one that you need for a different SBC which is supported either by Armbian or DietPi, please post a request on the [Zulip server](https://adsblol.zulipchat.com/#narrow/stream/391168-adsb-feeder-image)
->
+
 > [!WARNING]
 > Images that start with `adsb-im-iob` can take up to **20 minutes** at first boot. Images without `iob` in their name still can take more than 5 minutes before the web interface is available. Please be patient.
 >

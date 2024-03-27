@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import io
 import re
 import subprocess
@@ -59,6 +60,7 @@ class SDRDevices:
     def __init__(self):
         self.sdrs: List[SDR] = []
         self.duplicates: Set[str] = set()
+        self._last_check = datetime.fromtimestamp(0)
 
     def __len__(self):
         return len(self.sdrs)
@@ -105,7 +107,10 @@ class SDRDevices:
                 found_serials.add(sdr._serial)
 
     def _ensure_populated(self):
+        if datetime.now() - self._last_check < timedelta(seconds=5.0):
+            return
         self.get_sdr_info()
+        self._last_check = datetime.now()
 
     def _get_address_for_pid_vid(self, pidvid: str, line: str):
         address = ""
