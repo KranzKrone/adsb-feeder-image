@@ -1,8 +1,6 @@
 # dataclass
 from dataclasses import dataclass
-from os import getenv, path
 from pathlib import Path
-from uuid import uuid4
 
 from .environment import Env
 from .netconfig import NetConfig
@@ -136,7 +134,6 @@ class Data:
         Env("FEEDER_ALT_M", default=[""], is_mandatory=True, tags=["alt"]),
         Env("FEEDER_TZ", default=[""], is_mandatory=True, tags=["tz"]),
         Env("SITE_NAME", default=[""], is_mandatory=True, tags=["site_name"]),
-        Env("MAP_NAME", default=[""], is_mandatory=True, tags=["map_name"]),
         #
         # SDR settings are only valid on an integrated feeder or a micro feeder, not on stage2
         Env("FEEDER_RTL_SDR", default="rtlsdr", tags=["rtlsdr"]),

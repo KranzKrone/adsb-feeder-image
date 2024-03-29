@@ -15,7 +15,6 @@ import threading
 from uuid import uuid4
 import sys
 import zipfile
-import tempfile
 from base64 import b64encode
 from datetime import datetime
 from os import urandom
@@ -30,8 +29,9 @@ from utils.config import (
 )
 
 if not os.path.exists("/opt/adsb/config/config.json"):
-    # this must be either a first run after an install,
-    # or the first run after an upgrade from a version that didn't use the config.json
+    print_err(
+        "No config.json found, this should have been created before starting adsb-setup"
+    )
     values = read_values_from_env_file()
     write_values_to_config_json(values)
 
@@ -65,6 +65,7 @@ from utils import (
     stack_info,
     generic_get_json,
     is_true,
+    verbose,
 )
 
 # nofmt: off
@@ -75,6 +76,7 @@ from werkzeug.utils import secure_filename
 
 class AdsbIm:
     def __init__(self):
+        print_err("starting AdsbIm.__init__", level=4)
         self.app = Flask(__name__)
         self.app.secret_key = urandom(16).hex()
 
@@ -179,15 +181,16 @@ class AdsbIm:
 
         # finally, try to make sure that we have all the pieces that we need and recreate what's missing
         stage2_yml_template = self._d.config_path / "stage2.yml"
-        for i in range(1, self._d.env_by_tags("num_micro_sites").value + 1):
+        for i in range(self._d.env_by_tags("num_micro_sites").value + 1):
             if not self._d.env_by_tags("adsblol_uuid").list_get(i):
                 self._d.env_by_tags("adsblol_uuid").list_set(i, str(uuid4()))
             if not self._d.env_by_tags("ultrafeeder_uuid").list_get(i):
                 self._d.env_by_tags("ultrafeeder_uuid").list_set(i, str(uuid4()))
-            create_stage2_yml_from_template(
-                self._d.config_path / f"stage2_micro_site_{i}.yml",
-                stage2_yml_template,
-            )
+            if i > 0:
+                create_stage2_yml_from_template(
+                    self._d.config_path / f"stage2_micro_site_{i}.yml",
+                    stage2_yml_template,
+                )
 
     def update_boardname(self):
         board = ""
@@ -586,7 +589,7 @@ class AdsbIm:
     def base_is_configured(self):
         base_config: set[Env] = {env for env in self._d._env if env.is_mandatory}
         for env in base_config:
-            if env.value == None:
+            if env._value == None or (type(env._value) == list and not env.list_get(0)):
                 print_err(f"base_is_configured: {env} isn't set up yet")
                 return False
         return True
@@ -1168,29 +1171,49 @@ class AdsbIm:
             env1090.value = ""
         self._d.env_by_tags("rtlsdr").value = "rtlsdr" if rtlsdr else ""
 
-        print_err(f"in the end we have")
-        print_err(f"1090serial {env1090.value}")
-        print_err(f"978serial {env978.value}")
-        print_err(f"airspy container is {self._d.is_enabled(['airspy', 'is_enabled'])}")
-        print_err(
-            f"SDRplay container is {self._d.is_enabled(['sdrplay', 'is_enabled'])}"
-        )
-        print_err(f"dump978 container {self._d.is_enabled(['uat978', 'is_enabled'])}")
+        if verbose & 1:
+            print_err(f"in the end we have")
+            print_err(f"1090serial {env1090.value}")
+            print_err(f"978serial {env978.value}")
+            print_err(
+                f"airspy container is {self._d.is_enabled(['airspy', 'is_enabled'])}"
+            )
+            print_err(
+                f"SDRplay container is {self._d.is_enabled(['sdrplay', 'is_enabled'])}"
+            )
+            print_err(
+                f"dump978 container {self._d.is_enabled(['uat978', 'is_enabled'])}"
+            )
 
-        # let's make sure we write out the updated ultrafeeder config
+        # set all of the ultrafeeder config data up
+        for i in range(1 + self._d.env_by_tags("num_micro_sites").value):
+            print_err(f"ultrafeeder_config {i}", level=2)
+            if i >= len(self._d.ultrafeeder):
+                self._d.ultrafeeder.append(UltrafeederConfig(data=self._d, micro=i))
+            self._d.env_by_tags("ultrafeeder_config").list_set(
+                i, self._d.ultrafeeder[i].generate()
+            )
+        # finally, check if this has given us enough configuration info to
+        # start the containers
+        agg_chosen_env = self._d.env_by_tags("aggregators_chosen")
+        if self.base_is_configured() or self._d.is_enabled("stage2"):
+            self._d.env_by_tags(["base_config", "is_enabled"]).value = True
+            if self.at_least_one_aggregator():
+                agg_chosen_env.value = True
+
+        # write all this out to the .env file so that a docker-compose run will find it
         write_values_to_env_file(self._d.envs)
 
         # if the button simply updated some field, stay on the same page
         if not seen_go:
+            print_err("no go button, so stay on the same page", level=2)
             return redirect(request.url)
 
-        # finally, check if this has given us enough configuration info to
-        # start the containers
-        if self.base_is_configured() or self._d.is_enabled("stage2"):
-            self._d.env_by_tags(["base_config", "is_enabled"]).value = True
-            agg_chosen_env = self._d.env_by_tags("aggregators_chosen")
-            if agg_chosen_env.value == True or self.at_least_one_aggregator():
-                agg_chosen_env.value = True
+        # where do we go from here?
+        if self._d.is_enabled("base_config"):
+            print_err("base config is completed", level=2)
+            if agg_chosen_env.value == True:
+                print_err("base config is completed", level=2)
                 if self._d.is_enabled("sdrplay") and not self._d.is_enabled(
                     "sdrplay_license_accepted"
                 ):
@@ -1200,6 +1223,7 @@ class AdsbIm:
                 return redirect(url_for("stage2"))
             if self._d.env_by_tags("aggregators").value != "micro":
                 return redirect(url_for("aggregators"))
+        print_err("base config not completed", level=2)
         return redirect(url_for("director"))
 
     @check_restart_lock

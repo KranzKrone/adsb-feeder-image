@@ -40,6 +40,7 @@ class Restart:
 
     def restart_systemd(self):
         if self.lock.locked():
+            print_err("restart locked")
             return False
         with self.lock:
             print_err("Calling /opt/adsb/adsb-system-restart.sh")

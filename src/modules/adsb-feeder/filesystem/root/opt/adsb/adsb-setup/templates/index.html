@@ -313,16 +313,16 @@
       .then(data => {
         // now use the idx to do something clever about what is shown there...
         // right now this is broken and just overwrites things
-        $("#" + agg + "beast").text(data["beast"]);
-        $("#" + agg + "mlat").text(data["mlat"]);
+        $("#" + agg + "beast" + idx).text(data["beast"]);
+        $("#" + agg + "mlat" + idx).text(data["mlat"]);
         if (data["beast"] == "+" && data["mlat"] != "-") {
-          $("#" + agg + "span").addClass('text-success')
+          $("#" + agg + "span" + idx).addClass('text-success')
         } else if (data["beast"] == "+" && data["mlat"] == "-") {
-          $("#" + agg + "span").addClass('text-warning')
+          $("#" + agg + "span" + idx).addClass('text-warning')
         } else if (data["beast"] == "-" && data["mlat"] == "-") {
-          $("#" + agg + "span").addClass('text-danger')
+          $("#" + agg + "span" + idx).addClass('text-danger')
         } else {
-          $("#" + agg + "span").addClass('text-dark')
+          $("#" + agg + "span" + idx).addClass('text-dark')
         }
         if (agg == "adsbx") {
           $("#adsbxstatlink").attr("href", "https://www.adsbexchange.com/api/feeders/?feed=" + data["adsbxfeederid"])
